@@ -10,7 +10,8 @@
     --tile-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     --gap: 10px;
     --board-size: min(90vw, 400px);
-    --tile-size: calc((var(--board-size) - (3 * var(--gap))) / 4);
+    --grid-size: 4;
+    --tile-size: calc((var(--board-size) - ((var(--grid-size) - 1) * var(--gap))) / var(--grid-size));
 }
 
 * {
@@ -34,10 +35,48 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
     padding: 20px;
     width: 100%;
     max-width: 500px;
+}
+
+.controls-top {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+}
+
+.select-difficulty {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--secondary-color);
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+}
+
+.select-difficulty:focus {
+    border-color: #667eea;
+}
+
+.tip-container {
+    background-color: rgba(102, 126, 234, 0.1);
+    padding: 10px 20px;
+    border-radius: 10px;
+    width: 100%;
+    text-align: center;
+    border-left: 3px solid #667eea;
+}
+
+#tip-text {
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    margin: 0;
 }
 
 header {
@@ -135,6 +174,12 @@ p {
     animation: errorFlash 0.4s;
 }
 
+.tile.hint {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+    border: 2px solid rgba(255, 215, 0, 0.8);
+    z-index: 2;
+}
+
 @keyframes glow {
     0% {
         box-shadow: 0 0 5px rgba(118, 75, 162, 0.4);
@@ -192,6 +237,11 @@ p {
     transition: transform 0.1s, opacity 0.2s;
 }
 
+.btn.small {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
 .btn:active {
     transform: scale(0.95);
 }
@@ -244,6 +294,8 @@ p {
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 2;
 }
 
 .win-message.visible .win-content {
@@ -266,4 +318,14 @@ p {
 
 .hidden {
     display: none;
+}
+
+#fireworks-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
 }
