@@ -21,20 +21,50 @@ document.addEventListener('DOMContentLoaded', () => {
     let isPlaying = false;
     let tipInterval;
     let helpActive = false;
+    let gameStarted = false;
+    let lastHelpTime = 0;
 
-    // Liste de conseils
-    const tips = [
-        "Conseil : Commencez par résoudre la première ligne !",
-        "Astuce : Travaillez ligne par ligne de haut en bas.",
-        "Conseil : Placez d'abord les coins, puis les bords.",
-        "Astuce : Ne déplacez pas les tuiles déjà bien placées.",
-        "Conseil : Visualisez plusieurs coups à l'avance.",
-        "Astuce : Parfois il faut défaire pour mieux avancer !",
-        "Conseil : Concentrez-vous sur une section à la fois.",
-        "Astuce : Les dernières tuiles se placent automatiquement.",
-        "Conseil : Prenez votre temps, la précision compte !",
-        "Astuce : Utilisez le bouton Aide si vous êtes bloqué !"
+    // Conseils de base
+    const generalTips = [
+        "Conseil : Commencez par résoudre la première ligne de gauche à droite.",
+        "Astuce : Une fois la première ligne complète, ne la touchez plus !",
+        "Conseil : Résolvez ensuite la première colonne de haut en bas.",
+        "Astuce : Travaillez en spirale : ligne, colonne, ligne, colonne...",
+        "Conseil : Les 4 dernières tuiles se placeront automatiquement.",
+        "Astuce : Créez des espaces temporaires pour manœuvrer les tuiles.",
+        "Conseil : Parfois il faut éloigner une tuile pour mieux la replacer.",
+        "Astuce : Visualisez 2-3 mouvements à l'avance avant d'agir.",
+        "Conseil : Ne paniquez pas si vous défaites du progrès temporairement.",
+        "Astuce : Utilisez le bouton Aide pour un coup stratégique !"
     ];
+
+    // Conseils contextuels basés sur la progression
+    function getContextualTip() {
+        const progress = calculateProgress();
+
+        if (progress < 20) {
+            return "Conseil : Commencez par placer les tuiles 1, 2, 3, 4 dans la première ligne.";
+        } else if (progress < 40) {
+            return "Astuce : Maintenant, concentrez-vous sur la première colonne.";
+        } else if (progress < 60) {
+            return "Conseil : Continuez ligne par ligne, vous progressez bien !";
+        } else if (progress < 80) {
+            return "Astuce : Plus que quelques tuiles ! Restez concentré.";
+        } else if (progress < 95) {
+            return "Conseil : Presque fini ! Les dernières tuiles sont les plus délicates.";
+        } else {
+            return "Astuce : Vous y êtes presque ! Encore quelques mouvements !";
+        }
+    }
+
+    // Calcule le pourcentage de tuiles bien placées
+    function calculateProgress() {
+        let correctCount = 0;
+        for (let i = 0; i < state.length - 1; i++) {
+            if (state[i] === i + 1) correctCount++;
+        }
+        return (correctCount / (state.length - 1)) * 100;
+    }
 
     // Initialize the game
     function initGame() {
@@ -43,15 +73,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startTipRotation() {
-        // Change tip every 10 seconds
+        // Change tip every 12 seconds
         if (tipInterval) clearInterval(tipInterval);
-        showRandomTip();
-        tipInterval = setInterval(showRandomTip, 10000);
+        showSmartTip();
+        tipInterval = setInterval(showSmartTip, 12000);
     }
 
-    function showRandomTip() {
-        const randomTip = tips[Math.floor(Math.random() * tips.length)];
-        tipText.textContent = randomTip;
+    function showSmartTip() {
+        let tip;
+
+        if (isPlaying) {
+            // Pendant le jeu, montrer des conseils contextuels 70% du temps
+            if (Math.random() < 0.7) {
+                tip = getContextualTip();
+            } else {
+                tip = generalTips[Math.floor(Math.random() * generalTips.length)];
+            }
+        } else {
+            // Avant le jeu, conseils généraux
+            tip = generalTips[Math.floor(Math.random() * generalTips.length)];
+        }
+
+        tipText.textContent = tip;
         tipText.style.animation = 'none';
         setTimeout(() => {
             tipText.style.animation = 'fadeIn 0.5s ease';
@@ -82,6 +125,19 @@ document.addEventListener('DOMContentLoaded', () => {
         isPlaying = false;
         winMessage.classList.remove('visible');
         winMessage.classList.add('hidden');
+
+        // Update button states
+        if (!gameStarted) {
+            resetBtn.textContent = 'Démarrer';
+            resetBtn.classList.remove('secondary');
+            resetBtn.classList.add('primary');
+            shuffleBtn.style.display = 'none';
+        } else {
+            resetBtn.textContent = 'Réinitialiser';
+            resetBtn.classList.remove('primary');
+            resetBtn.classList.add('secondary');
+            shuffleBtn.style.display = 'inline-block';
+        }
     }
 
     function renderBoard() {
@@ -101,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Position tiles
         const tileElements = Array.from(board.children);
-        const gapSize = 10; // Match CSS --gap
 
         state.forEach((value, index) => {
             if (value === 0) return; // Empty slot
@@ -109,10 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const tile = tileElements.find(el => parseInt(el.dataset.value) === value);
             const row = Math.floor(index / size);
             const col = index % size;
-
-            // Calculate position including gaps
-            const translateX = col * 100 + col * (gapSize / (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tile-size')) / 100));
-            const translateY = row * 100 + row * (gapSize / (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tile-size')) / 100));
 
             tile.style.transform = `translate(${col * 100}%, ${row * 100}%)`;
 
@@ -164,8 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function shuffle() {
+        gameStarted = true;
         let shuffleMoves = 0;
-        const maxShuffleMoves = size * size * 10; // More moves for harder difficulties
+        const maxShuffleMoves = size * size * 10;
         const interval = setInterval(() => {
             const emptyIdx = state.indexOf(0);
             const neighbors = [];
@@ -191,6 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 seconds = 0;
                 updateDisplay();
                 startTimer();
+
+                // Update buttons after shuffle
+                resetBtn.textContent = 'Réinitialiser';
+                resetBtn.classList.remove('primary');
+                resetBtn.classList.add('secondary');
+                shuffleBtn.style.display = 'inline-block';
             }
         }, 10);
     }
@@ -280,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function createFirework() {
             const x = Math.random() * fireworksCanvas.width;
             const y = Math.random() * fireworksCanvas.height * 0.5;
-            
+
             for (let i = 0; i < particleCount; i++) {
                 particles.push(new Particle(x, y));
             }
@@ -316,52 +374,144 @@ document.addEventListener('DOMContentLoaded', () => {
         animate();
     }
 
-    // Help feature
+    // Algorithme d'aide intelligent amélioré
     function showHelp() {
         if (!isPlaying || helpActive) return;
 
+        // Limite l'utilisation de l'aide à une fois toutes les 3 secondes
+        const now = Date.now();
+        if (now - lastHelpTime < 3000) {
+            tipText.textContent = "⏳ Attendez quelques secondes avant de redemander de l'aide.";
+            return;
+        }
+        lastHelpTime = now;
+
         helpActive = true;
-        const emptyIdx = state.indexOf(0);
-        const neighbors = [];
-
-        const row = Math.floor(emptyIdx / size);
-        const col = emptyIdx % size;
-
-        if (row > 0) neighbors.push(emptyIdx - size);
-        if (row < size - 1) neighbors.push(emptyIdx + size);
-        if (col > 0) neighbors.push(emptyIdx - 1);
-        if (col < size - 1) neighbors.push(emptyIdx + 1);
-
-        // Find the best move (tile that should be in the empty position)
-        let bestMove = null;
-        let bestScore = -1;
-
-        neighbors.forEach(idx => {
-            const value = state[idx];
-            // Check if moving this tile would place it correctly
-            if (value === emptyIdx + 1) {
-                bestMove = idx;
-                bestScore = 100;
-            } else if (bestScore < 50) {
-                // Otherwise, suggest a random valid move
-                bestMove = idx;
-                bestScore = 50;
-            }
-        });
+        const bestMove = findBestMove();
 
         if (bestMove !== null) {
-            const tileValue = state[bestMove];
+            const tileValue = state[bestMove.tileIndex];
             const tileElements = Array.from(board.children);
             const tile = tileElements.find(el => parseInt(el.dataset.value) === tileValue);
-            
+
             if (tile) {
                 tile.classList.add('hint');
+
+                // Afficher un conseil personnalisé
+                const moveReason = bestMove.reason;
+                tipText.textContent = `💡 ${moveReason}`;
+
                 setTimeout(() => {
                     tile.classList.remove('hint');
                     helpActive = false;
-                }, 2000);
+                    showSmartTip(); // Retour au conseil normal
+                }, 3000);
+            }
+        } else {
+            tipText.textContent = "🤔 Continuez à explorer, vous êtes sur la bonne voie !";
+            helpActive = false;
+        }
+    }
+
+    // Trouve le meilleur mouvement possible
+    function findBestMove() {
+        const emptyIdx = state.indexOf(0);
+        const neighbors = getNeighbors(emptyIdx);
+
+        if (neighbors.length === 0) return null;
+
+        let bestMove = null;
+        let bestScore = -1000;
+        let bestReason = "";
+
+        neighbors.forEach(idx => {
+            const value = state[idx];
+            let score = 0;
+            let reason = "";
+
+            // Priorité 1 : Placer une tuile à sa position correcte
+            if (value === emptyIdx + 1) {
+                score = 1000;
+                reason = `Déplacez la tuile ${value} - elle sera à sa place finale !`;
+            }
+            // Priorité 2 : Déplacer une tuile mal placée qui bloque une position importante
+            else if (isBlockingImportantPosition(idx, value)) {
+                score = 500;
+                reason = `Déplacez la tuile ${value} - elle bloque une position importante.`;
+            }
+            // Priorité 3 : Rapprocher une tuile de sa destination
+            else {
+                const currentDistance = getManhattanDistance(idx, value - 1);
+                const newDistance = getManhattanDistance(emptyIdx, value - 1);
+
+                if (newDistance < currentDistance) {
+                    score = 300 - newDistance * 10;
+                    reason = `Déplacez la tuile ${value} - elle se rapproche de sa position.`;
+                } else {
+                    score = 100;
+                    reason = `Déplacez la tuile ${value} pour créer de l'espace.`;
+                }
+            }
+
+            // Bonus : Favoriser les tuiles de faible numéro (stratégie ligne par ligne)
+            if (value <= size) {
+                score += 50;
+            }
+
+            // Pénalité : Éviter de déplacer les tuiles déjà bien placées
+            if (state[idx] === idx + 1) {
+                score -= 2000;
+                reason = `⚠️ Ne déplacez PAS la tuile ${value} - elle est déjà bien placée !`;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = { tileIndex: idx, score: score, reason: reason };
+            }
+        });
+
+        return bestMove;
+    }
+
+    // Obtient les voisins d'une position
+    function getNeighbors(idx) {
+        const neighbors = [];
+        const row = Math.floor(idx / size);
+        const col = idx % size;
+
+        if (row > 0) neighbors.push(idx - size);
+        if (row < size - 1) neighbors.push(idx + size);
+        if (col > 0) neighbors.push(idx - 1);
+        if (col < size - 1) neighbors.push(idx + 1);
+
+        return neighbors;
+    }
+
+    // Distance de Manhattan entre deux positions
+    function getManhattanDistance(currentIdx, targetIdx) {
+        const currentRow = Math.floor(currentIdx / size);
+        const currentCol = currentIdx % size;
+        const targetRow = Math.floor(targetIdx / size);
+        const targetCol = targetIdx % size;
+
+        return Math.abs(currentRow - targetRow) + Math.abs(currentCol - targetCol);
+    }
+
+    // Vérifie si une tuile bloque une position importante
+    function isBlockingImportantPosition(idx, value) {
+        // Les positions importantes sont celles de la première ligne et première colonne
+        const row = Math.floor(idx / size);
+        const col = idx % size;
+
+        // Si on est dans la première ligne ou colonne
+        if (row === 0 || col === 0) {
+            // Et que la tuile n'est pas à sa place
+            if (value !== idx + 1) {
+                return true;
             }
         }
+
+        return false;
     }
 
     // Event listeners
@@ -369,7 +519,14 @@ document.addEventListener('DOMContentLoaded', () => {
         shuffle();
     });
 
-    resetBtn.addEventListener('click', resetGame);
+    resetBtn.addEventListener('click', () => {
+        if (!gameStarted) {
+            shuffle();
+        } else {
+            gameStarted = false;
+            resetGame();
+        }
+    });
 
     playAgainBtn.addEventListener('click', () => {
         resetGame();
@@ -378,10 +535,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     difficultySelect.addEventListener('change', (e) => {
         size = parseInt(e.target.value);
+        gameStarted = false;
         resetGame();
     });
 
     helpBtn.addEventListener('click', showHelp);
+
+    // Handle window resize for fireworks canvas
+    window.addEventListener('resize', () => {
+        if (fireworksCanvas.width > 0) {
+            fireworksCanvas.width = window.innerWidth;
+            fireworksCanvas.height = window.innerHeight;
+        }
+    });
 
     // Initial setup
     initGame();
